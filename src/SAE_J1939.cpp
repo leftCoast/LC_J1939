@@ -1119,7 +1119,7 @@ bool xferNode::sendDataMsg(void) {
 			dataMsg.setDataByte(i,msgData[byteTotal++]);		// Write the data byte.
 		}																	//
 	}																		//
-	ourNetObj->outgoingingMsg(&dataMsg);						// And its on it's way!
+	ourNetObj->outgoingMsg(&dataMsg);						// And its on it's way!
 	return byteTotal>=msgSize;										// Return if this was the last or not.
 }
 
@@ -1221,7 +1221,7 @@ void xferNode::sendflowControlMsg(flowContType msgType,abortReason reason) {
 	flowContMsg.setDataByte(5,byte5);						//	Stuff pre-calculated PGN bytes in place.
 	flowContMsg.setDataByte(6,byte6);						// 
 	flowContMsg.setDataByte(7,byte7);						//
-	ourNetObj->outgoingingMsg(&flowContMsg);				// Off it goes!
+	ourNetObj->outgoingMsg(&flowContMsg);				// Off it goes!
 }
 
 // BYTE 4 : In a broadcast this is supposed to be set to 0xFF meaning unlimited amount of
@@ -1823,7 +1823,7 @@ void netObj::incomingMsg(message* inMsg) {
 // When we want a message sent out, it's passed in here. If the message's data section is
 // greater than 8 bytes, this will automatically send it to the transfer list to be broken
 // into a set of multi packet messages. -(Can have > 8 data bytes)-
-void netObj::outgoingingMsg(message* outMsg) {
+void netObj::outgoingMsg(message* outMsg) {
 
 	if (outMsg) {											// First sanity. Always check for NULL.
 		if (outMsg->getNumBytes()>8) {				// Ok, If we have more than 8 databytes..
@@ -2153,7 +2153,7 @@ void netObj::returnAck(ackType inType,message* reqMsg) {
 				ackMsg.setDataByte(0,3);		// Can't you see I'm busy?! Is 3.
 			break;
 		}
-		outgoingingMsg(&ackMsg);				// And away it goes.	
+		outgoingMsg(&ackMsg);					// And away it goes.	
 	}
 }
 
@@ -2367,7 +2367,7 @@ void netObj::sendRequestForAddressClaim(byte inAddr) {
 	ourMsg.setSourceAddr(getAddr());		// Set our address.
 	ourMsg.setPGN(REQ_MESSAGE);			// Set the PGN..
 	ourMsg.setPDUs(inAddr);					// Then set destination address as lower bits of PGN.
-	outgoingingMsg(&ourMsg);				// Off it goes!
+	outgoingMsg(&ourMsg);					// Off it goes!
 }
 
 
@@ -2387,7 +2387,7 @@ void netObj::sendAddressClaimed(bool tryFail,byte outAddr) {
 	}													//
 	ourMsg.setPGN(ADDR_CLAIMED);				// Set the PGN..
 	ourMsg.setPDUs(outAddr);					// Then set destination address as lower bits of PGN.
-	outgoingingMsg(&ourMsg);					// Off it goes!													
+	outgoingMsg(&ourMsg);						// Off it goes!													
 }
 
 
@@ -2422,7 +2422,7 @@ void netObj::addrCom(netName* nameObj,byte newAddr) {
 			comMsg.setDataByte(i,namePtr[i]);					// Plunk it into our comMsg data buffer.
 		}																	//
 		comMsg.setDataByte(8,newAddr);							// In the (9th) byte, stuff in the new address.
-		outgoingingMsg(&comMsg);									// Send it on it's way!
+		outgoingMsg(&comMsg);										// Send it on it's way!
 	}														
 }
 
@@ -2493,7 +2493,7 @@ void msgHandler::newMsg(void) { }
 
 
 // The created messages are sent by this guy.
-void msgHandler::sendMsg(message* inMsg) { ourNetObj->outgoingingMsg(inMsg); }
+void msgHandler::sendMsg(message* inMsg) { ourNetObj->outgoingMsg(inMsg); }
 
 
 // Broadcasting typically is done on a clock. Set the time interval with this call.

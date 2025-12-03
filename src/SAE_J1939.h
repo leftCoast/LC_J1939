@@ -734,7 +734,7 @@ class netObj :	public linkList,
 	virtual	void		addMsgHandler(msgHandler* inHanldler);										// ** USE THIS TO ADD YOUR HANDLER OBJECTS FOR THE MESSAGEDS YOU WANT TO SEND/RECEIVE **
 	virtual  void		sendMsg(message* outMsg)=0;													// ** YOU WRITE THIS ONE TO SEND 8 BYTE OR SMALLER MESSAGES. DON'T CALL IT! **
 	virtual  void		incomingMsg(message* inMsg);													// ** WHEN A MESSAGE COMES IN FROM THE HARDWARE, PASS IT IN HERE. **
-	virtual  void		outgoingingMsg(message* inMsg);												// ** USE THIS TO SEND MESSAGES ** IT CAN HANDLE >8 BYTE MESSAGES AND WILL CALL sendMsg() FOR YOU.
+	virtual  void		outgoingMsg(message* inMsg);													// ** USE THIS TO SEND MESSAGES ** IT CAN HANDLE >8 BYTE MESSAGES AND WILL CALL sendMsg() FOR YOU.
 				bool		isBusy();																			// ** USE TO SEE IF WE ARE IN A WAIT STATE **
 				void		refreshAddrList(void);															// ** USE THIS TO CLEAR THEN REFRESH THE ADDRESS LIST, GIVE IT A SECOND TO COMPLETE. **
 				void		checkMessages(void);																// If we have one we'll grab it and deal with it. -(Can have > 8 data bytes)-
