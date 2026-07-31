@@ -1,4 +1,5 @@
 #include <SAE_J1939.h>
+//#include <debug.h>
 
 bool showReq = false;
 
@@ -291,7 +292,7 @@ byte message::getDataByte(int index) { return msgData[index]; }
 // This one passes the pointer to our data buffer to someone else and TRUSTS them to NOT
 // MESS WITH IT. For educational purposes only! Actually, this is used in the commanded
 // address stuff to see who the command is actually adressed to. Non-destructively.
-byte* message::peekData(void) { return msgData; }
+byte* message::peekData(void) {  return msgData; }
 
 
 // Ok, this one passes the pointer to our data buffer to SOMEONE ELSE TO OWN. We give up
@@ -1037,7 +1038,7 @@ xferNode::xferNode(netObj* inNetObj,xferList* inList)
 xferNode::~xferNode(void) {
 
 	if (msgData) {			// If someone set it..
-		free(msgData);		// We'll release it.
+		free(msgData);		// We'll release it. (It's just a buffer)
 		msgData = NULL;	// Flag it so no one else tries to release it.
 	}
 }
@@ -1063,7 +1064,7 @@ bool xferNode::isOurMsg(message* inMsg) {
 
 	if (!complete && inMsg!=NULL) {									// First reality check.
 		if (inMsg->getPDUf()==FLOW_CON_PF) {						// If its flow control?
-			return checkFCID(inMsg);						// Check the ID bits.
+			return checkFCID(inMsg);									// Check the ID bits.
 		} else if (inMsg->isBroadcast()) {							// If it's a broadcast?
 			return true;													// We'll ok broadcasts as well.
 		} else if (inMsg->getPDUs()==ourNetObj->getAddr()) {	// Not a broadcast, but addressed to us?
@@ -1119,7 +1120,7 @@ bool xferNode::sendDataMsg(void) {
 			dataMsg.setDataByte(i,msgData[byteTotal++]);		// Write the data byte.
 		}																	//
 	}																		//
-	ourNetObj->outgoingMsg(&dataMsg);						// And its on it's way!
+	ourNetObj->outgoingMsg(&dataMsg);							// And its on it's way!
 	return byteTotal>=msgSize;										// Return if this was the last or not.
 }
 
@@ -1185,6 +1186,7 @@ void xferNode::sendflowControlMsg(flowContType msgType,abortReason reason) {
 	switch(msgType) {
 		case BAM				:										// If broadcast. outAddr == 255. Or.. 
 		case reqToSend		:										// If peer to peer. outAddr != 255.
+			Serial.println(msgSize);
 			aWord = msgSize;										// Next two are the number of bytes to come.
 			aByte = aWord & 0x00FF;								// Low order byte.
 			flowContMsg.setDataByte(1,aByte);				// Set it into data index 1.
@@ -1217,6 +1219,7 @@ void xferNode::sendflowControlMsg(flowContType msgType,abortReason reason) {
 			flowContMsg.setDataByte(3,0xFF);					// These next two as well
 			flowContMsg.setDataByte(4,0xFF);					// There ya' go..
 		break;
+		default :	break;
 	}
 	flowContMsg.setDataByte(5,byte5);						//	Stuff pre-calculated PGN bytes in place.
 	flowContMsg.setDataByte(6,byte6);						// 
@@ -1406,7 +1409,7 @@ incomingBroadcast::incomingBroadcast(message* inMsg,netObj* inNetObj,xferList* i
 
 	msgSize	= pack16(inMsg->getDataByte(2),inMsg->getDataByte(1));	// Grab the number of bytes.
 	if (resizeBuff(msgSize,&msgData)) {											// If we got the RAM.
-		saveFCID(inMsg);													// Save off the PGN for later.
+		saveFCID(inMsg);																// Save off the PGN for later.
 		msgPacks = inMsg->getDataByte(3);										// Grab the number of packets.
 		msgAddr = inMsg->getSourceAddr();										// Grab source address.
 		xFerTimer.setTime(BCAST_T1_MS);											// We start the timeout timer.
@@ -1421,7 +1424,7 @@ incomingBroadcast::incomingBroadcast(message* inMsg,netObj* inNetObj,xferList* i
 	
 // The only thing we allocated was part of a message that'll dissolve when we recycle. So
 // nothing to do here.
-incomingBroadcast::~incomingBroadcast(void) { }
+incomingBroadcast::~incomingBroadcast(void) {  }
 
 
 // Broadcasts run completely on timers and there is no way to control them from this end.
@@ -1542,7 +1545,6 @@ bool incomingPeerToPeer::handleMsg(message* inMsg) {
 			}													
 			handled = true;													// We handled this message.
 		} else if (inMsg->getPDUf()==FLOW_CON_PF) {					// Or, if it's a flow control msg..
-			
 			switch(inMsg->getDataByte(0)) {								// Let's see what they sent us.
 				case reqToSend		:											// Umm, we're receiving, not sending.
 				case clearToSend	:											// Same as above.
@@ -1590,7 +1592,13 @@ xferList::xferList(void)
 xferList::~xferList(void) {  }
 
 
-void xferList::begin(netObj* inNetObj) { ourNetObj = inNetObj; }
+void xferList::begin(netObj* inNetObj) {
+
+	if (inNetObj) {				// Sanity, if they gave us an actual pointer..
+		ourNetObj = inNetObj;	// Save it away.
+		hookup();					// Good time to hookup. Shop is open for business!
+	}
+}
 
 
 // Either we create a new outgoing extended message. Or, we received from the net a new
@@ -1643,7 +1651,6 @@ bool xferList::checkList(message* ioMsg) {
 // lets have a look at it.
 bool xferList::handleMsg(message* ioMsg,bool received) {
 
-	
 	bool			handled;
 	message		tempMsg;
 	uint32_t		PGN;
@@ -1710,6 +1717,27 @@ bool xferList::anyoneWaiting(void) {
 
 
 // Basic garbage collection. Any transfer message nodes completed get marked as complete
+// and need to be recycled. 
+void  xferList::listCleanup(void) {
+
+	xferNode*	trace;
+	xferNode*	nextObj;
+	
+	trace = (xferNode*)getFirst();					// Grab the pointer to the top of the list.
+	while(trace) {											// While we don't have a null pointer..
+		if (trace->complete) {							// If this node is complete..
+			nextObj = (xferNode*)trace->getNext();	// Save off the next node.
+			unlinkObj(trace);								// Unlink the current completed node.
+			delete(trace);									// Recycle the complete node.
+			trace = nextObj;								// Point at the next node. (Who we want to check next)				
+		} else {
+			trace = (xferNode*)trace->getNext();	// We jump to the next. (Till we hit a null pointer.)
+		}
+	}
+}
+
+/*
+// Basic garbage collection. Any transfer message nodes completed get marked as complete
 // and need to be recycled. Actually we only need to kill off one. This will be called
 // over and over so, if there are more, the'll get hit soon.
 void  xferList::listCleanup(void) {
@@ -1727,6 +1755,8 @@ void  xferList::listCleanup(void) {
 		}
 	}	
 }
+*/
+
 
 
 // Maintain the list and let all the current transfers do their thing.
@@ -1754,7 +1784,7 @@ msgObj::msgObj(message* inMsg)
 	message(inMsg) {  }
 
 
-msgObj::~msgObj(void) { }					
+msgObj::~msgObj(void) {  }					
 					
 
 msgQ::msgQ(void) {  }
@@ -1791,7 +1821,6 @@ void netObj::begin(byte inAddr,addrCat inAddrCat) {
 	setAddr(inAddr);							// Our initial address.
 	setAddrCat(inAddrCat);					// Our method of handling address issues.
 	hookup();									// We are guaranteed to be in code section, so hookup.
-	ourXferList.hookup();					// That should do it..
 }
 
 
@@ -1811,7 +1840,7 @@ void netObj::incomingMsg(message* inMsg) {
 	
 	if (inMsg) {												// First sanity. Did they slip us a NULL?
 		if (!ourXferList.handleMsg(inMsg,true)) {		// Not NULL. Ok, if the xfer list doesn't want it..
-			newMsg = new msgObj(inMsg);					// Make up a msgObj..
+			newMsg = new msgObj(inMsg);					// Make up a msgObj copy..
 			if (newMsg) {										// Got one?
 				ourMsgQ.push(newMsg);						// Stuff it into the queue.
 			}
@@ -1867,7 +1896,7 @@ void netObj::refreshAddrList(void) {
 // it's a network task. These we have to handle ourselves. Then, if not, we ask each the
 // handlers if one of them can handle it. Once a msgHandler handles it, or
 // none will. We are done.	-(Can have > 8 data bytes, see above)-
-void netObj::checkMessages(void) {
+void netObj::checkIncoming(void) {
 
 	msgObj*			aMsg;
 	msgHandler*		trace;
@@ -1881,7 +1910,7 @@ void netObj::checkMessages(void) {
 			if (isAddrClaimReq(aMsg)) {									// Is it a request address claim? "I want your address and name".
 				handelAddrClaimReq(aMsg);									// Do the request address claim dance.
 			} else {																//
-				haveRequest = true;											// We have a request that we've not delat with. We'll see if the added handlers will deal with it.
+				haveRequest = true;											// We have a request that we've not delt with. We'll see if the added handlers will deal with it.
 			}																		//
 		}																			//
 		else if (isAddrClaim(aMsg)) {										// Else if it's an address claim? "I'm going to use this address. You ok with that?"
@@ -1892,12 +1921,11 @@ void netObj::checkMessages(void) {
 		}																			//
 		else if (isCommandedAddr(aMsg)) {								// Someone, or something is trying to change our address.
 			handleComAddr(aMsg);												// If this is all legal, in order, and makes sense. We'll do it.
-		}
-		else {																	// Else this is not something we handle..
+		} else {																	// Else this is not something we handle internally..
 			if (ourState==running) {										// If we are in a running state.
 				done = false;													// Note we're not done.
 				trace = (msgHandler*)getFirst();							// We go through our user's message handlers. Let them have a whack at it.
-				while(!done) {													// For ever handler..
+				while(!done) {													// For every handler..
 					if (trace) {												// If non-NULL..
 						if (trace->handleMsg(aMsg)) {						// Can you handled this?
 							haveRequest = false;								// If this was a request, they handled it.
@@ -1908,7 +1936,7 @@ void netObj::checkMessages(void) {
 					} else {														// Else we hit a NULL?
 						done = true;											// In this case we are also done.
 						if (haveRequest) {									// Well, in case we have a request that is still waiting.
-							returnAck(nack,aMsg);							// No one dealt with this se we'll send a NACK.
+							returnAck(nack,aMsg);							// No one dealt with this, so we'll send a NACK.
 						}															//
 					}																//
 				}																	//
@@ -2430,8 +2458,6 @@ void netObj::addrCom(netName* nameObj,byte newAddr) {
 // Deal with timers, See if any msgHandler's need to output messages of their own. Or other chores
 // we know nothing about.
 void netObj::idle(void) {
-
-	msgHandler*			trace;
 	
 	switch(ourState) {
 		case config		:										// We're in config state. Time to start up!
@@ -2448,16 +2474,11 @@ void netObj::idle(void) {
 			}														//
 		break;													//
 		case arbit		:										// In arbitration state. We'll check what's up.
-			checkMessages();									// First see if there's a message waiting for us.
+			checkIncoming();									// First see if there's a message waiting for us.
 			checkArbit();										// Then check the state of our arbitration.
 		break;													//
 		case running	:										// We're in running state. Let the CAs have some runtime.
-			checkMessages();									// First see if there's a message waiting for us.
-			trace = (msgHandler*)getFirst();				// Well start at the beginning and let 'em all have a go.
-			while(trace) {										// While we got something..
-				trace->idleTime();							// Give 'em some time to do things.
-				trace = (msgHandler*)trace->getNext();	// Grab the next one.
-			}														//
+			checkIncoming();									// See if there's a message waiting. If so, we deal with it.
 		break;													//
 		default			:						break;		// Anything else? Basically do nothing.
 	}																//

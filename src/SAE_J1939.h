@@ -737,7 +737,7 @@ class netObj :	public linkList,
 	virtual  void		outgoingMsg(message* inMsg);													// ** USE THIS TO SEND MESSAGES ** IT CAN HANDLE >8 BYTE MESSAGES AND WILL CALL sendMsg() FOR YOU.
 				bool		isBusy();																			// ** USE TO SEE IF WE ARE IN A WAIT STATE **
 				void		refreshAddrList(void);															// ** USE THIS TO CLEAR THEN REFRESH THE ADDRESS LIST, GIVE IT A SECOND TO COMPLETE. **
-				void		checkMessages(void);																// If we have one we'll grab it and deal with it. -(Can have > 8 data bytes)-
+				void		checkIncoming(void);																// If we have one we'll grab it and deal with it. -(Can have > 8 data bytes)-
 				void		startHoldTimer(void);															// Calculate and start the address holding time delay. Function of address.
 				void		clearErr(void);																	// This will clear the address error and restart the process.
 				void		changeState(netObjState newState);											// Keeping track of what we are up to.
