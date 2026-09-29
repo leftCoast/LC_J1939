@@ -1815,13 +1815,18 @@ netObj::~netObj(void) {  }
 
 
 // Things we can do to set up shop once we are actually post globals and running in code.
-void netObj::begin(byte inAddr,addrCat inAddrCat) {
+bool netObj::begin(byte inAddr,addrCat inAddrCat) {
 
 	ourXferList.begin(this);				// The xferList needs a pointer to us. Here 'tis.
 	setAddr(inAddr);							// Our initial address.
 	setAddrCat(inAddrCat);					// Our method of handling address issues.
 	hookup();									// We are guaranteed to be in code section, so hookup.
+	return true;								// For those that come after, we need to return a bool.
 }
+
+
+// You will inherit this object and write this method there. This is the glue to your hardware.
+void netObj::sendMsg(message* outMsg) {  }
 
 
 // Add the handlers of the messages you would like to send/receive.

@@ -730,9 +730,9 @@ class netObj :	public linkList,
 				netObj(void);
 	virtual	~netObj(void);
 	
-	virtual	void		begin(byte inAddr,addrCat inAddCat);										// ** YOU WILL NEED TO CALL THIS BEFORE USE ** - Initial setup.
+	virtual	bool		begin(byte inAddr,addrCat inAddCat);										// ** YOU WILL NEED TO CALL THIS BEFORE USE ** - Initial setup.
 	virtual	void		addMsgHandler(msgHandler* inHanldler);										// ** USE THIS TO ADD YOUR HANDLER OBJECTS FOR THE MESSAGEDS YOU WANT TO SEND/RECEIVE **
-	virtual  void		sendMsg(message* outMsg)=0;													// ** YOU WRITE THIS ONE TO SEND 8 BYTE OR SMALLER MESSAGES. DON'T CALL IT! **
+	virtual  void		sendMsg(message* outMsg);													// ** YOU WRITE THIS ONE TO SEND 8 BYTE OR SMALLER MESSAGES. DON'T CALL IT! **
 	virtual  void		incomingMsg(message* inMsg);													// ** WHEN A MESSAGE COMES IN FROM THE HARDWARE, PASS IT IN HERE. **
 	virtual  void		outgoingMsg(message* inMsg);													// ** USE THIS TO SEND MESSAGES ** IT CAN HANDLE >8 BYTE MESSAGES AND WILL CALL sendMsg() FOR YOU.
 				bool		isBusy();																			// ** USE TO SEE IF WE ARE IN A WAIT STATE **
