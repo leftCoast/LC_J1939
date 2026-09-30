@@ -4,7 +4,7 @@
 bool showReq = false;
 
 // The byte order is not the same as Arduino. It could be different than whatever YOU are
-// trying to use the for. So we have these two integer byte ordering routines to make life
+// trying to use this for. So we have these two integer byte ordering routines to make life
 // easier. Whatever byte you want as high byte, stuff in the highByte slot, low byte into
 // lowByte slot etc.
 
